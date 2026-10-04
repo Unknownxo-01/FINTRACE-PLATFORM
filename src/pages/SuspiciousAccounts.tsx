@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, ShieldAlert, Network, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react';
 import { Account } from '../types';
 import { api } from '../services/api';
@@ -7,10 +7,18 @@ import { cn } from '../utils/cn';
 
 export default function SuspiciousAccounts() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
     const [riskFilter, setRiskFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
+
+    useEffect(() => {
+        const queryParam = searchParams.get('search');
+        if (queryParam) {
+            setSearchQuery(queryParam);
+        }
+    }, [searchParams]);
 
     const fetchAccounts = () => {
         api.getAccounts().then(data => {
@@ -31,7 +39,13 @@ export default function SuspiciousAccounts() {
         return accounts.filter(a => {
             const matchRisk = riskFilter === 'All' || a.risk === riskFilter;
             const q = searchQuery.toLowerCase();
-            const matchQ = !searchQuery || a.id.toLowerCase().includes(q) || a.status.toLowerCase().includes(q);
+            const matchQ = !searchQuery || 
+                a.id.toLowerCase().includes(q) || 
+                a.status.toLowerCase().includes(q) ||
+                (a.accountHolder && a.accountHolder.toLowerCase().includes(q)) ||
+                (a.bankName && a.bankName.toLowerCase().includes(q)) ||
+                (a.accountNumber && a.accountNumber.toLowerCase().includes(q)) ||
+                (a.detectedPatterns && a.detectedPatterns.some(p => p.toLowerCase().includes(q)));
             return matchRisk && matchQ;
         });
     }, [accounts, riskFilter, searchQuery]);

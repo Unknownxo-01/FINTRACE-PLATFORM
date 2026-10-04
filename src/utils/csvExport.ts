@@ -369,3 +369,187 @@ export function exportTransactionsToCsv(
 
 export const exportToCSV = exportTransactionsToCsv;
 
+/**
+ * Maps a detected pattern name to the human-readable triggered rule description.
+ * Uses only actual rule logic from the FINTRACE detection engine (csvParser.ts).
+ */
+export function deriveTriggerRule(
+    pattern: string,
+    txn: Transaction,
+    investigations: Investigation[]
+): string {
+    const p = pattern.toLowerCase();
+
+    if (p.includes('circular')) {
+        return 'Circular transaction path detected: Receiver account returns funds to Sender account';
+    }
+    if (p.includes('structuring') || p.includes('smurfing')) {
+        return `Structuring rule triggered: Amount ₹${txn.amount.toLocaleString('en-IN')} falls within threshold-avoidance band (₹45,000–₹50,000)`;
+    }
+    if (p.includes('high-velocity') || p.includes('burst')) {
+        return `High-velocity burst: Transfer settled in ${txn.processingTime ?? 0}s — within rapid-pass window (<60s)`;
+    }
+    if (p.includes('rapid pass') || p.includes('pass-through')) {
+        return 'Rapid pass-through: Funds forwarded immediately after receipt — indicative of mule account behaviour';
+    }
+    if (p.includes('large transfer')) {
+        return `Large transfer rule: Single transaction of ₹${txn.amount.toLocaleString('en-IN')} exceeds high-value reporting threshold`;
+    }
+    if (p.includes('multi-hop') || p.includes('layering')) {
+        return 'Multi-hop layering detected: Transaction forms part of a multi-institution transfer chain';
+    }
+    if (p.includes('suspicious') || p.includes('anomaly') || p.includes('velocity')) {
+        return 'Velocity anomaly: Unusual frequency or timing pattern detected relative to account baseline';
+    }
+
+    // Check investigation match for additional context
+    const matchedInv = investigations.find(inv =>
+        inv.id === txn.investigationId ||
+        (inv.accounts.includes(txn.sender) && inv.accounts.includes(txn.receiver))
+    );
+    if (matchedInv) {
+        return `Linked investigation (${matchedInv.id}): ${matchedInv.pattern} — ${matchedInv.risk} risk case`;
+    }
+
+    if (txn.status === 'Flagged') {
+        return 'Flagged by AML screening: Transaction marked for manual investigator review';
+    }
+
+    return 'No rule triggered — transaction within normal parameters';
+}
+
+export interface InvestigationExportOptions {
+    filename?: string;
+    accounts?: Account[];
+    investigations?: Investigation[];
+}
+
+/**
+ * Exports transactions as investigation-grade evidence CSV.
+ * Contains investigation-specific fields:
+ *   Transaction_ID, Sender_Account, Receiver_Account, Sender_Bank, Receiver_Bank,
+ *   Amount_INR, Transaction_DateTime, Detected_Pattern, Triggered_Rule,
+ *   Related_Accounts, Flow_Direction, Investigation_Status, Investigation_ID
+ *
+ * Uses only real detection results from the existing FINTRACE rule engine.
+ * No AI or fabricated data.
+ */
+export function exportInvestigationData(
+    transactions: Transaction[],
+    options: InvestigationExportOptions = {}
+): { totalExported: number; filename: string; flaggedCount: number } {
+    const {
+        accounts = [],
+        investigations = [],
+    } = options;
+
+    const date = new Date().toISOString().slice(0, 10);
+
+    // Build a meaningful filename: if there's exactly one investigation ID, use it
+    const invIds = [...new Set(transactions.map(t => t.investigationId).filter(Boolean))];
+    const invTag = invIds.length === 1 ? `_${invIds[0]}` : invIds.length > 1 ? `_${invIds.length}Cases` : '';
+    const filename = options.filename || `FINTRACE${invTag}_Investigation_Data_${date}.csv`;
+
+    const accountsMap = new Map<string, Account>(accounts.map(a => [a.id, a]));
+
+    // CSV Headers (investigation-grade)
+    const headers = [
+        'Transaction_ID',
+        'Sender_Account',
+        'Receiver_Account',
+        'Sender_Bank',
+        'Receiver_Bank',
+        'Amount_INR',
+        'Transaction_DateTime',
+        'AML_Status',
+        'Detected_Pattern',
+        'Triggered_Rule',
+        'Related_Accounts',
+        'Flow_Direction',
+        'Investigation_Status',
+        'Investigation_ID',
+        'Sender_Account_Holder',
+        'Receiver_Account_Holder',
+        'Transfer_Latency_Seconds',
+        'Risk_Level',
+    ];
+
+    const rows = transactions.map(txn => {
+        // Resolved pattern (real — from engine or investigation match)
+        const pattern = resolveDetectedPattern(txn, accountsMap, investigations);
+
+        // Triggered rule derived from actual pattern logic
+        const triggeredRule = deriveTriggerRule(pattern, txn, investigations);
+
+        // Sender/receiver bank details
+        const senderDetails = resolveAccountDetails(txn.sender, accountsMap);
+        const receiverDetails = resolveAccountDetails(txn.receiver, accountsMap);
+
+        // Connected accounts already built by engine
+        const connectedInfo = buildConnectedUserBankDetails(txn, accountsMap, investigations);
+        const relatedAccounts = connectedInfo.connectedAccountsList.join(' | ');
+
+        // Flow direction
+        const flowDirection = `${txn.sender} (${txn.institution || senderDetails.bankName}) → ${txn.receiver} (${txn.receiverInstitution || receiverDetails.bankName})`;
+
+        // Investigation match for status
+        const matchedInv = investigations.find(inv =>
+            inv.id === txn.investigationId ||
+            (inv.accounts.includes(txn.sender) && inv.accounts.includes(txn.receiver)) ||
+            inv.accounts.includes(txn.sender)
+        );
+        const investigationStatus = matchedInv?.status ?? (txn.status === 'Flagged' ? 'Open' : 'N/A');
+        const investigationId = txn.investigationId || matchedInv?.id || 'N/A';
+
+        // Risk from account or investigation
+        const senderRisk = accountsMap.get(txn.sender)?.risk ?? 'Unknown';
+        const receiverRisk = accountsMap.get(txn.receiver)?.risk ?? 'Unknown';
+        const riskLevel = matchedInv?.risk ?? (
+            senderRisk === 'High' || receiverRisk === 'High' ? 'High' :
+            senderRisk === 'Medium' || receiverRisk === 'Medium' ? 'Medium' : 'Low'
+        );
+
+        // AML status label
+        const amlStatus = txn.status === 'Completed' ? 'Cleared' : txn.status;
+
+        return [
+            escapeCsvCell(txn.transactionId),
+            escapeCsvCell(txn.sender),
+            escapeCsvCell(txn.receiver),
+            escapeCsvCell(txn.institution || senderDetails.bankName),
+            escapeCsvCell(txn.receiverInstitution || receiverDetails.bankName),
+            escapeCsvCell(txn.amount),
+            escapeCsvCell(txn.timestamp.replace('T', ' ')),
+            escapeCsvCell(amlStatus),
+            escapeCsvCell(pattern),
+            escapeCsvCell(triggeredRule),
+            escapeCsvCell(relatedAccounts),
+            escapeCsvCell(flowDirection),
+            escapeCsvCell(investigationStatus),
+            escapeCsvCell(investigationId),
+            escapeCsvCell(txn.senderHolder || senderDetails.holder),
+            escapeCsvCell(txn.receiverHolder || receiverDetails.holder),
+            escapeCsvCell(txn.processingTime ?? 0),
+            escapeCsvCell(riskLevel),
+        ].join(',');
+    });
+
+    // UTF-8 BOM so Excel opens with correct currency/special chars
+    const csvContent = '\uFEFF' + [headers.map(escapeCsvCell).join(','), ...rows].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    return {
+        totalExported: transactions.length,
+        filename,
+        flaggedCount: transactions.filter(t => t.status === 'Flagged').length,
+    };
+}

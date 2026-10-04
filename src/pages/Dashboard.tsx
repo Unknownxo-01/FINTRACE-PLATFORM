@@ -317,17 +317,17 @@ export default function Dashboard() {
 
                         <div className="relative p-5 flex flex-col gap-3">
                             {/* Top row: label + icon */}
-                            <div className="flex items-start justify-between">
-                                <span className="text-[11px] font-medium tracking-tight text-muted font-sans leading-tight max-w-[110px]">
+                            <div className="flex items-start justify-between gap-2">
+                                <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-muted/80 leading-tight">
                                     {kpi.label}
                                 </span>
-                                <div className={`p-2 rounded-xl border ${kpi.iconBg} ${kpi.color} flex-shrink-0`}>
-                                    <kpi.icon className="w-4 h-4" strokeWidth={1.75} />
+                                <div className={`p-2 rounded-xl border ${kpi.iconBg} ${kpi.color} flex-shrink-0 shadow-sm`}>
+                                    <kpi.icon className="w-4 h-4" strokeWidth={2} />
                                 </div>
                             </div>
 
-                            {/* Big value */}
-                            <div className={`text-[28px] font-bold font-mono tracking-tight tabular-nums leading-none ${kpi.color}`}>
+                            {/* Big value — bold, coloured, subtle glow */}
+                            <div className={`kpi-value text-[34px] leading-none ${kpi.color}`}>
                                 {kpi.value}
                             </div>
 
@@ -354,12 +354,12 @@ export default function Dashboard() {
                             </div>
 
                             {/* Bottom: sub-label + trend */}
-                            <div className="flex items-center justify-between pt-0.5">
-                                <span className="text-[10px] font-mono text-muted/70 truncate">{kpi.sub}</span>
-                                <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded ${
+                            <div className="flex items-center justify-between pt-0.5 gap-2">
+                                <span className="text-[10px] font-mono font-medium text-muted/60 truncate">{kpi.sub}</span>
+                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 ${
                                     kpi.trendUp 
-                                        ? 'text-danger bg-danger/10' 
-                                        : 'text-muted bg-white/[0.05]'
+                                        ? 'text-success bg-success/10 border-success/25' 
+                                        : 'text-muted bg-white/[0.04] border-white/[0.1]'
                                 }`}>
                                     {kpi.trend}
                                 </span>

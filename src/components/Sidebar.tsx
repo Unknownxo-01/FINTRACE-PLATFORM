@@ -7,8 +7,7 @@ import {
     AlertTriangle, 
     FileBarChart, 
     Settings as SettingsIcon, 
-    ShieldAlert,
-    Radio
+    ShieldAlert
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
@@ -54,7 +53,7 @@ export default function Sidebar() {
     return (
         <aside className="flex h-full w-72 flex-col bg-card/95 backdrop-blur-2xl border-r border-white/[0.07] shrink-0 select-none z-30">
             {/* Brand Logo & Telemetry */}
-            <div className="h-20 shrink-0 px-6 flex items-center justify-between border-b border-white/[0.07] bg-card-subtle/50">
+            <div className="h-16 shrink-0 px-5 flex items-center justify-between border-b border-white/[0.07] bg-card-subtle/50">
                 <div className="flex items-center gap-3">
                     <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/5 to-secondary/20 border border-primary/40 shadow-panel-glow">
                         <ShieldAlert className="w-5 h-5 text-primary" />
@@ -73,15 +72,6 @@ export default function Sidebar() {
                         <p className="text-[10px] text-muted tracking-tight font-mono">FINANCIAL FORENSICS OS</p>
                     </div>
                 </div>
-            </div>
-
-            {/* Live Sentinel Status Strip */}
-            <div className="px-5 py-2.5 bg-background/50 border-b border-white/[0.04] flex items-center justify-between text-[11px] font-mono text-muted">
-                <div className="flex items-center gap-2">
-                    <Radio className="w-3.5 h-3.5 text-success animate-pulse" />
-                    <span className="text-text font-medium">SENTINEL FEED</span>
-                </div>
-                <span className="text-success font-semibold tracking-wide">ONLINE • 99.9%</span>
             </div>
 
             {/* Navigation Sections */}
@@ -125,22 +115,16 @@ export default function Sidebar() {
                 ))}
             </nav>
 
-            {/* User Clearance Card */}
-            <div className="p-3.5 border-t border-white/[0.07] bg-card-subtle/80">
-                <div className="p-3 rounded-xl bg-background/60 border border-white/[0.06] flex items-center gap-3">
-                    <div className="relative">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-900 to-blue-900 border border-primary/30 flex items-center justify-center text-primary font-mono text-xs font-bold shadow-inner">
-                            AN-09
-                        </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success ring-2 ring-background"></span>
+            {/* System Engine Status Footer */}
+            <div className="p-3.5 border-t border-white/[0.07] bg-card-subtle/40">
+                <div className="px-3 py-2.5 rounded-xl bg-background/50 border border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-muted">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        <span className="text-text font-medium text-[11px]">AML CORE v2.8</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold text-text truncate">Agent Sharma</p>
-                            <span className="text-[9px] font-mono text-primary bg-primary/10 px-1 rounded">L4</span>
-                        </div>
-                        <p className="text-[10px] font-mono text-muted truncate">Lead AML Investigator</p>
-                    </div>
+                    <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                        ACTIVE SECURE
+                    </span>
                 </div>
             </div>
         </aside>
